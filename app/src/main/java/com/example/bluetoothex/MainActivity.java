@@ -40,7 +40,9 @@ public class MainActivity extends AppCompatActivity implements BaseInterface {
 
     RecyclerView mRecyclerView;
     private ArrayList<Scan> mArrayList;
-    String name, address, rssi_, uuid, UUID;
+
+    String name, address, rssi_, num, uuid, UUID;
+    int number;
     List<ParcelUuid> uuids;
     private ScanAdapter mAdapter;
 
@@ -54,6 +56,8 @@ public class MainActivity extends AppCompatActivity implements BaseInterface {
     boolean bluetooth = false;
 
     LocationManager locationManager;
+
+    List<String> list = new ArrayList<>();
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -128,6 +132,7 @@ public class MainActivity extends AppCompatActivity implements BaseInterface {
         }
     }
 
+
     private void stopScan() {
         isScanning = false;
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
@@ -159,31 +164,48 @@ public class MainActivity extends AppCompatActivity implements BaseInterface {
                             @Override
                             public void run() {
 
-                                //UUID값 가져오기
                                 BluetoothDevice device = result.getDevice();
                                 if (device.getType() == BluetoothDevice.DEVICE_TYPE_LE) {
                                     if (device.fetchUuidsWithSdp()) {
                                         System.out.println(device.getName());
                                         uuids = result.getScanRecord().getServiceUuids();
-                                        System.out.println(uuids);
-                                        System.out.println(result.getScanRecord().getBytes());
-                                        System.out.println(result.getScanRecord().getBytes());
+                                        UUID = uuids.toString();
+                                        list.add(UUID);
 
-                                        if (uuids == null) {
-                                            UUID = "NULL";
-                                        } else {
-                                            name = scanResult.getDevice().getName();
-                                            address = scanResult.getDevice().getAddress();
-                                            rssi_ = String.valueOf(result.getRssi());
-                                            UUID = uuids.toString();
 
-                                            if (name == null) {
-                                                name = "N/A";
+//                                        System.out.println("유유아이디" + uuids);
+//                                        System.out.println("getBytes" + result.getScanRecord().getBytes());
+//                                        System.out.println("getScanRecord" + result.getScanRecord());
+//                                        System.out.println("====================================");
+
+                                        for (int i = 0; i <= list.size(); i++) {
+
+                                            for (int j = 0; j < i; j++) {
+
+                                                Log.e("I", list.get(i));
+                                                Log.e("J", list.get(j));
+
+
+                                                if (list.get(j).equals("")) {
+                                                    continue;
+                                                } else if (!list.get(i).equals(list.get(j))) {
+                                                    name = scanResult.getDevice().getName();
+                                                    address = scanResult.getDevice().getAddress();
+                                                    rssi_ = String.valueOf(result.getRssi());
+                                                    UUID = uuids.toString();
+                                                    num = String.valueOf(number);
+
+                                                    Scan data = new Scan(num, name, address, rssi_, UUID);
+                                                    mArrayList.add(data);
+                                                    mAdapter.notifyDataSetChanged();
+                                                }
                                             }
+                                        }
 
-                                            Scan data = new Scan(name, address, rssi_, UUID);
-                                            mArrayList.add(data);
-                                            mAdapter.notifyDataSetChanged();
+
+
+                                        if (name == null) {
+                                            name = "N/A";
                                         }
                                     }
                                 }
@@ -253,7 +275,7 @@ public class MainActivity extends AppCompatActivity implements BaseInterface {
                 name = "N/A";
             }
 
-            Scan data = new Scan(name, address, rssi_, UUID);
+            Scan data = new Scan(num, name, address, rssi_, UUID);
             mArrayList.add(data);
             mAdapter.notifyDataSetChanged();
         }
@@ -262,6 +284,7 @@ public class MainActivity extends AppCompatActivity implements BaseInterface {
 
     /*UUID 변환 (롤리팝미만버전)*/
     static final char[] hexArray = "0123456789ABCDEF".toCharArray();
+
     private static String bytesToHex(byte[] bytes) {
         char[] hexChars = new char[bytes.length * 2];
         for (int j = 0; j < bytes.length; j++) {
@@ -285,7 +308,7 @@ public class MainActivity extends AppCompatActivity implements BaseInterface {
             Log.e("bluetooth", String.valueOf(bluetooth));
 
             if (locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER) && mBluetoothAdapter.isEnabled()) {
-               startScan();
+                startScan();
             } else {
                 if (!locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER)) {
                     Toast.makeText(MainActivity.this, "위치정보 비활성화 상태입니다.", Toast.LENGTH_SHORT).show();

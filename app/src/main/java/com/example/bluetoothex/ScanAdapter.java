@@ -9,6 +9,8 @@ import android.widget.TextView;
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 
+import org.w3c.dom.Text;
+
 import java.util.ArrayList;
 
 public class ScanAdapter extends RecyclerView.Adapter<ScanAdapter.ViewHolder> {
@@ -30,7 +32,6 @@ public class ScanAdapter extends RecyclerView.Adapter<ScanAdapter.ViewHolder> {
                 .inflate(R.layout.row_scan, parent, false);
 
         ViewHolder viewHolder = new ViewHolder(view);
-
         return viewHolder;
 
     }
@@ -43,14 +44,13 @@ public class ScanAdapter extends RecyclerView.Adapter<ScanAdapter.ViewHolder> {
     @Override
     public void onBindViewHolder(@NonNull ViewHolder holder, int position) {
 
+        holder.textView_number.setText(mList.get(position).getNumber());
         holder.textview_name.setText(mList.get(position).getName());
         holder.textview_address.setText(mList.get(position).getAddress());
-        holder.textView_UUID.setText(mList.get(position).getUuid());
         holder.textView_rssi.setText(mList.get(position).getRssi());
+        holder.textView_UUID.setText(mList.get(position).getUuid());
 
     }
-
-
 
     public static class ViewHolder extends RecyclerView.ViewHolder {
 
@@ -58,14 +58,18 @@ public class ScanAdapter extends RecyclerView.Adapter<ScanAdapter.ViewHolder> {
         TextView textview_address;
         TextView textView_rssi;
         TextView textView_UUID;
+        TextView textView_number;
+
 
         public ViewHolder(@NonNull View itemView) {
             super(itemView);
 
+            this.textView_number = itemView.findViewById(R.id.textview_number);
             this.textview_name = itemView.findViewById(R.id.textview_name);
             this.textview_address = itemView.findViewById(R.id.textview_address);
             this.textView_rssi = itemView.findViewById(R.id.textview_rssi);
             this.textView_UUID = itemView.findViewById(R.id.textview_uuid);
+
 
         }
     }
