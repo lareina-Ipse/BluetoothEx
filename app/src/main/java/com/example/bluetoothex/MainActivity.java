@@ -19,6 +19,8 @@ import android.bluetooth.le.ScanSettings;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.location.LocationManager;
+import android.location.SettingInjectorService;
+import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.ParcelUuid;
@@ -50,9 +52,11 @@ public class MainActivity extends AppCompatActivity implements BaseInterface {
     private static int REQUEST_ACCESS_FINE_LOCATION = 1000;
     int REQUESTE_ENABLE = 0;
     private boolean isScanning = false;
+    boolean gps = false;
+    boolean bluetooth = false;
 
-    //위치 활성화 확인
     LocationManager locationManager;
+    String provider;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -61,35 +65,14 @@ public class MainActivity extends AppCompatActivity implements BaseInterface {
 
         initViews();
         initItems();
+        checkSDKVersion();
         initListener();
-
-        //java.lang.SecurityException: Need ACCESS_COARSE_LOCATION or ACCESS_FINE_LOCATION permission to get scan results
-        //위치권한요청
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N_MR1) {
-            int permissionCheck = ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION);
-            if (permissionCheck == PackageManager.PERMISSION_DENIED) {
-                ActivityCompat.requestPermissions(this,
-                        new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, REQUEST_ACCESS_FINE_LOCATION);
-            }
-        }
-
-        if (!locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER)) {
-            //비활성화 되어 있는 경우
-            Toast.makeText(this, "위치가 비활성화 되어있습니다.", Toast.LENGTH_SHORT).show();
-
-            Intent intent = new Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS);
-            intent.addCategory(Intent.CATEGORY_DEFAULT);
-            startActivity(intent);
-
-        }
-
     }
 
 
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        stopScan();
 
     }
 
@@ -99,8 +82,6 @@ public class MainActivity extends AppCompatActivity implements BaseInterface {
         button_start = findViewById(R.id.button_start);
         button_stop = findViewById(R.id.button_stop);
         mRecyclerView = findViewById(R.id.recyclerview_main_list);
-
-
     }
 
     @Override
@@ -129,6 +110,7 @@ public class MainActivity extends AppCompatActivity implements BaseInterface {
         mBluetoothLeScanner = mBluetoothAdapter.getBluetoothLeScanner();
 
         locationManager = (LocationManager) getSystemService(LOCATION_SERVICE);
+        provider = Settings.Secure.getString(getContentResolver(), Settings.Secure.LOCATION_PROVIDERS_ALLOWED);
 
     }
 
@@ -142,31 +124,22 @@ public class MainActivity extends AppCompatActivity implements BaseInterface {
 
     private void startScan() {
         isScanning = true;
-
-        //위치 활성화 확인
-
         //위치활성화 되어있는 경우
-        if (mBluetoothAdapter.isEnabled()) {
-            //블루투스 활성화 되어있는 경우
-            ScanSettings.Builder builder = new ScanSettings.Builder();
 
-            builder.setScanMode(ScanSettings.SCAN_MODE_LOW_LATENCY);
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N_MR1) {
-                builder.setMatchMode(ScanSettings.MATCH_MODE_AGGRESSIVE);
-            }
 
-            ScanSettings settings = builder.build();
+        //블루투스 활성화 되어있는 경우
+        ScanSettings.Builder builder = new ScanSettings.Builder();
+        builder.setScanMode(ScanSettings.SCAN_MODE_LOW_LATENCY);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N_MR1) {
+            builder.setMatchMode(ScanSettings.MATCH_MODE_AGGRESSIVE);
+        }
+        ScanSettings settings = builder.build();
 
-            //롤리팝 이상 / 이하
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-                mBluetoothLeScanner.startScan(null, settings, mScanCallback);
-            } else {
-                mBluetoothAdapter.startLeScan(mLeScanCallback);
-            }
+        //롤리팝 이상 / 이하
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            mBluetoothLeScanner.startScan(null, settings, mScanCallback);
         } else {
-            //안되어있는 경우
-            Intent intent = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
-            startActivityForResult(intent, REQUESTE_ENABLE);
+            mBluetoothAdapter.startLeScan(mLeScanCallback);
         }
     }
 
@@ -174,6 +147,7 @@ public class MainActivity extends AppCompatActivity implements BaseInterface {
     private void stopScan() {
         isScanning = false;
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            mBluetoothLeScanner.stopScan(mScanCallback);
             mBluetoothLeScanner.stopScan(mScanCallback);
         } else {
             mBluetoothAdapter.stopLeScan(mLeScanCallback);
@@ -317,16 +291,59 @@ public class MainActivity extends AppCompatActivity implements BaseInterface {
     View.OnClickListener buttonStartListener = new View.OnClickListener() {
         @Override
         public void onClick(View v) {
-            initProcess();
+
+            turnGPSOn();
+            turnBluetoothOn();
+
+            Log.e("gps", String.valueOf(gps));
+            Log.e("bluetooth", String.valueOf(bluetooth));
+
+            if (locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER) && mBluetoothAdapter.isEnabled()) {
+               startScan();
+            } else {
+                if (!locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER)) {
+                    turnGPSOn();
+                } else if (!mBluetoothAdapter.isEnabled()) {
+                    turnBluetoothOn();
+                }
+            }
         }
     };
 
     View.OnClickListener buttonStopListener = new View.OnClickListener() {
         @Override
         public void onClick(View v) {
-            onDestroy();
+            stopScan();
         }
     };
 
 
+    private void checkSDKVersion() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N_MR1) {
+            int permissionCheck = ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION);
+            if (permissionCheck == PackageManager.PERMISSION_DENIED) {
+                ActivityCompat.requestPermissions(this,
+                        new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, REQUEST_ACCESS_FINE_LOCATION);
+            }
+        }
+    }
+
+    private void turnGPSOn() {
+        if (!locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER)) { //if gps is disabled
+            Intent intent = new Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS);
+            intent.addCategory(Intent.CATEGORY_DEFAULT);
+            startActivity(intent);
+            gps = true;
+        }
+    }
+
+    private void turnBluetoothOn() {
+        if (!mBluetoothAdapter.isEnabled()) {
+            Intent intent = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
+            startActivityForResult(intent, REQUESTE_ENABLE);
+            bluetooth = true;
+        }
+    }
 }
+
+
