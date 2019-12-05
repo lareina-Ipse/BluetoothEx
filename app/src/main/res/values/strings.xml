@@ -1,0 +1,5 @@
+<resources>
+    <string name="app_name">BluetoothEx</string>
+    <string name="start">스캔 시작</string>
+    <string name="stop">스캔 중지</string>
+</resources>
