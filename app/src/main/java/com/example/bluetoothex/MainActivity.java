@@ -44,9 +44,7 @@ public class MainActivity extends AppCompatActivity implements BaseInterface {
     List<ParcelUuid> uuids;
     private ScanAdapter mAdapter;
 
-    //롤리팝미만
     BluetoothAdapter mBluetoothAdapter;
-    //롤리팝이상
     BluetoothLeScanner mBluetoothLeScanner;
 
     private static int REQUEST_ACCESS_FINE_LOCATION = 1000;
@@ -56,7 +54,6 @@ public class MainActivity extends AppCompatActivity implements BaseInterface {
     boolean bluetooth = false;
 
     LocationManager locationManager;
-    String provider;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -94,24 +91,17 @@ public class MainActivity extends AppCompatActivity implements BaseInterface {
     public void initItems() {
 
         mRecyclerView = findViewById(R.id.recyclerview_main_list);
-
         LinearLayoutManager linearLayoutManager = new LinearLayoutManager(this);
         mRecyclerView.setLayoutManager(linearLayoutManager);
-
         mArrayList = new ArrayList<>();
         mAdapter = new ScanAdapter(mArrayList);
         mRecyclerView.setAdapter(mAdapter);
-
         DividerItemDecoration dividerItemDecoration = new DividerItemDecoration(mRecyclerView.getContext(),
                 linearLayoutManager.getOrientation());
         mRecyclerView.addItemDecoration(dividerItemDecoration);
-
         mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
         mBluetoothLeScanner = mBluetoothAdapter.getBluetoothLeScanner();
-
         locationManager = (LocationManager) getSystemService(LOCATION_SERVICE);
-        provider = Settings.Secure.getString(getContentResolver(), Settings.Secure.LOCATION_PROVIDERS_ALLOWED);
-
     }
 
     @Override
@@ -121,13 +111,9 @@ public class MainActivity extends AppCompatActivity implements BaseInterface {
         }
     }
 
-
     private void startScan() {
         isScanning = true;
-        //위치활성화 되어있는 경우
 
-
-        //블루투스 활성화 되어있는 경우
         ScanSettings.Builder builder = new ScanSettings.Builder();
         builder.setScanMode(ScanSettings.SCAN_MODE_LOW_LATENCY);
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N_MR1) {
@@ -135,14 +121,12 @@ public class MainActivity extends AppCompatActivity implements BaseInterface {
         }
         ScanSettings settings = builder.build();
 
-        //롤리팝 이상 / 이하
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
             mBluetoothLeScanner.startScan(null, settings, mScanCallback);
         } else {
             mBluetoothAdapter.startLeScan(mLeScanCallback);
         }
     }
-
 
     private void stopScan() {
         isScanning = false;
@@ -154,7 +138,7 @@ public class MainActivity extends AppCompatActivity implements BaseInterface {
         }
     }
 
-    //롤리팝 이상
+    /*롤리팝이상버전*/
     private ScanCallback mScanCallback = new ScanCallback() {
         @Override
         public void onScanResult(int callbackType, final ScanResult result) {
@@ -227,6 +211,7 @@ public class MainActivity extends AppCompatActivity implements BaseInterface {
         }
     };
 
+    /*롤리팝 미만 버전*/
     BluetoothAdapter.LeScanCallback mLeScanCallback = new BluetoothAdapter.LeScanCallback() {
         @Override
         public void onLeScan(BluetoothDevice device, int rssi, byte[] scanRecord) {
@@ -274,9 +259,9 @@ public class MainActivity extends AppCompatActivity implements BaseInterface {
         }
     };
 
-    //UUID 변환
-    static final char[] hexArray = "0123456789ABCDEF".toCharArray();
 
+    /*UUID 변환 (롤리팝미만버전)*/
+    static final char[] hexArray = "0123456789ABCDEF".toCharArray();
     private static String bytesToHex(byte[] bytes) {
         char[] hexChars = new char[bytes.length * 2];
         for (int j = 0; j < bytes.length; j++) {
@@ -288,6 +273,7 @@ public class MainActivity extends AppCompatActivity implements BaseInterface {
 
     }
 
+    /*buttonStart*/
     View.OnClickListener buttonStartListener = new View.OnClickListener() {
         @Override
         public void onClick(View v) {
@@ -302,14 +288,17 @@ public class MainActivity extends AppCompatActivity implements BaseInterface {
                startScan();
             } else {
                 if (!locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER)) {
+                    Toast.makeText(MainActivity.this, "위치정보 비활성화 상태입니다.", Toast.LENGTH_SHORT).show();
                     turnGPSOn();
                 } else if (!mBluetoothAdapter.isEnabled()) {
+                    Toast.makeText(MainActivity.this, "블루투스 비활성화 상태입니다.", Toast.LENGTH_SHORT).show();
                     turnBluetoothOn();
                 }
             }
         }
     };
 
+    /*buttonStop*/
     View.OnClickListener buttonStopListener = new View.OnClickListener() {
         @Override
         public void onClick(View v) {
@@ -317,7 +306,7 @@ public class MainActivity extends AppCompatActivity implements BaseInterface {
         }
     };
 
-
+    /*위치권한 허용*/
     private void checkSDKVersion() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N_MR1) {
             int permissionCheck = ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION);
@@ -328,6 +317,7 @@ public class MainActivity extends AppCompatActivity implements BaseInterface {
         }
     }
 
+    /*위치정보 활성화*/
     private void turnGPSOn() {
         if (!locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER)) { //if gps is disabled
             Intent intent = new Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS);
@@ -337,6 +327,7 @@ public class MainActivity extends AppCompatActivity implements BaseInterface {
         }
     }
 
+    /*블루투스 활성화*/
     private void turnBluetoothOn() {
         if (!mBluetoothAdapter.isEnabled()) {
             Intent intent = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
