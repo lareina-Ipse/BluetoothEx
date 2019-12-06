@@ -1,12 +1,5 @@
 package com.example.bluetoothex;
 
-import androidx.appcompat.app.AppCompatActivity;
-import androidx.core.app.ActivityCompat;
-import androidx.core.content.ContextCompat;
-import androidx.recyclerview.widget.DividerItemDecoration;
-import androidx.recyclerview.widget.LinearLayoutManager;
-import androidx.recyclerview.widget.RecyclerView;
-
 import android.Manifest;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
@@ -28,7 +21,14 @@ import android.widget.Button;
 import android.widget.ListView;
 import android.widget.Toast;
 
-import java.util.ArrayList;
+import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
+
+import com.neovisionaries.bluetooth.ble.advertising.ADPayloadParser;
+import com.neovisionaries.bluetooth.ble.advertising.ADStructure;
+import com.neovisionaries.bluetooth.ble.advertising.IBeacon;
+
 import java.util.List;
 import java.util.Vector;
 
@@ -41,7 +41,7 @@ public class MainActivity extends AppCompatActivity implements BaseInterface {
     Vector<Scan> scan;
     private ScanAdapter mAdapter;
 
-    String name, address, rssi_, uuid, UUID;
+    String name, address, rssi_, uuid;
     List<ParcelUuid> uuids;
 
 
@@ -124,11 +124,11 @@ public class MainActivity extends AppCompatActivity implements BaseInterface {
         isScanning = false;
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
             mBluetoothLeScanner.stopScan(mScanCallback);
-            mBluetoothLeScanner.stopScan(mScanCallback);
         } else {
             mBluetoothAdapter.stopLeScan(mLeScanCallback);
         }
     }
+
 
     /*롤리팝이상버전*/
     ScanCallback mScanCallback = new ScanCallback() {
@@ -137,10 +137,8 @@ public class MainActivity extends AppCompatActivity implements BaseInterface {
             super.onScanResult(callbackType, result);
             try {
 
+
                 final ScanRecord scanRecord = result.getScanRecord();
-                Log.d("getTxPowerLevel()", scanRecord.getTxPowerLevel() + "");
-                Log.d("onScanResult()", result.getDevice().getAddress() + "\n" + result.getRssi() + "\n" + result.getDevice().getName()
-                        + "\n" + result.getDevice().getBondState() + "\n" + result.getDevice().getType());
 
                 final ScanResult scanResult = result;
                 new Thread(new Runnable() {
@@ -150,23 +148,16 @@ public class MainActivity extends AppCompatActivity implements BaseInterface {
                             @Override
                             public void run() {
 
-
                                 BluetoothDevice device = result.getDevice();
-                                if (device.getType() == BluetoothDevice.DEVICE_TYPE_LE) {
+                                if (device.getType() != BluetoothDevice.DEVICE_TYPE_LE) {
+                                    //Advertising type: Legacy 아닌경우.
                                     if (device.fetchUuidsWithSdp()) {
-                                        System.out.println(device.getName());
-                                        uuids = result.getScanRecord().getServiceUuids();
-                                        System.out.println(uuids);
-                                        System.out.println(result.getScanRecord().getBytes());
-                                        System.out.println(result.getScanRecord().getBytes());
-
                                         int check = 0;
-
                                         if (mListView.getCount() != 0) {
                                             for (int i = 0; i < mAdapter.getCount(); i++) {
                                                 if (mAdapter.getAddress(i).equals(scanResult.getDevice().getAddress())) {
                                                     if (uuids == null) {
-                                                        UUID = "NULL";
+
                                                     } else {
                                                         scan.set(i, new Scan(scanResult.getDevice().getName(),
                                                                 scanResult.getDevice().getAddress(),
@@ -179,9 +170,8 @@ public class MainActivity extends AppCompatActivity implements BaseInterface {
 
                                             if (check == 0) {
                                                 if (uuids == null) {
-                                                    UUID = "null";
+
                                                 } else {
-                                                    mAdapter.notifyDataSetChanged();
                                                     scan.add(0, new Scan(scanResult.getDevice().getName(),
                                                             scanResult.getDevice().getAddress(),
                                                             String.valueOf(result.getRssi()),
@@ -190,21 +180,22 @@ public class MainActivity extends AppCompatActivity implements BaseInterface {
                                                     mAdapter = new ScanAdapter(scan, getLayoutInflater());
                                                     mListView.setAdapter(mAdapter);
                                                     mAdapter.notifyDataSetChanged();
-
-
                                                 }
                                             }
-
                                         } else {
+                                            if (uuids == null ) {
 
-                                            scan.add(0, new Scan(scanResult.getDevice().getName(),
-                                                    scanResult.getDevice().getAddress(),
-                                                    String.valueOf(result.getRssi()),
-                                                    uuids.toString()));
+                                            } else {
+                                                scan.add(0, new Scan(scanResult.getDevice().getName(),
+                                                        scanResult.getDevice().getAddress(),
+                                                        String.valueOf(result.getRssi()),
+                                                        uuids.toString()));
 
-                                            mAdapter = new ScanAdapter(scan, getLayoutInflater());
-                                            mListView.setAdapter(mAdapter);
-                                            mAdapter.notifyDataSetChanged();
+                                                mAdapter = new ScanAdapter(scan, getLayoutInflater());
+                                                mListView.setAdapter(mAdapter);
+                                                mAdapter.notifyDataSetChanged();
+                                            }
+
                                         }
 
                                     }
@@ -270,7 +261,7 @@ public class MainActivity extends AppCompatActivity implements BaseInterface {
 
             name = device.getName();
             address = device.getAddress();
-            UUID = uuid;
+
             rssi_ = String.valueOf(rssi);
 
 
@@ -278,7 +269,7 @@ public class MainActivity extends AppCompatActivity implements BaseInterface {
                 name = "N/A";
             }
 
-            Scan data = new Scan(name, address, rssi_, UUID);
+            Scan data = new Scan(name, address, rssi_, uuid);
             mAdapter.notifyDataSetChanged();
         }
     };
@@ -355,6 +346,27 @@ public class MainActivity extends AppCompatActivity implements BaseInterface {
             startActivityForResult(intent, REQUESTE_ENABLE);
         }
     }
+
+    /*iBeacon uuid 값 가져오기*/
+    private String processScan(BluetoothDevice device, final byte[] scanRecord, final int rssi) {
+        List<ADStructure> structures =
+                ADPayloadParser.getInstance().parse(scanRecord);
+
+        String deviceUuid = null;
+
+
+        for (ADStructure structure : structures) {
+            if (structure instanceof IBeacon) {
+                IBeacon iBeacon = (IBeacon)structure;
+                deviceUuid = iBeacon.getUUID().toString();
+            }
+        }
+
+        return deviceUuid;
+    }
+
+    //processScan(result.getDevice(), result.getScanRecord().getBytes(), result.getRssi());
+
 }
 
 
