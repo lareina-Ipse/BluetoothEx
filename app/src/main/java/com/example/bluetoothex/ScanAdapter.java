@@ -4,6 +4,7 @@ import android.content.Context;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.BaseAdapter;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
@@ -12,66 +13,65 @@ import androidx.recyclerview.widget.RecyclerView;
 import org.w3c.dom.Text;
 
 import java.util.ArrayList;
+import java.util.Vector;
 
-public class ScanAdapter extends RecyclerView.Adapter<ScanAdapter.ViewHolder> {
+public class ScanAdapter extends BaseAdapter {
 
-    private Context mContext;
-    private ArrayList<Scan> mList;
-    private LayoutInflater mInflater;
+    private Vector<Scan> scans;
+    private LayoutInflater layoutInflater;
 
-    public ScanAdapter(ArrayList<Scan> mList) {
-        this.mContext = mContext;
-        this.mList = mList;
-        this.mInflater = mInflater;
-    }
-
-    @NonNull
-    @Override
-    public ViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
-        View view = LayoutInflater.from(parent.getContext())
-                .inflate(R.layout.row_scan, parent, false);
-
-        ViewHolder viewHolder = new ViewHolder(view);
-        return viewHolder;
-
+    public ScanAdapter(Vector<Scan> scans, LayoutInflater layoutInflater) {
+        this.scans = scans;
+        this.layoutInflater = layoutInflater;
     }
 
     @Override
-    public int getItemCount() {
-        return mList.size();
+    public int getCount() {
+        return scans.size();
     }
 
     @Override
-    public void onBindViewHolder(@NonNull ViewHolder holder, int position) {
-
-        holder.textView_number.setText(mList.get(position).getNumber());
-        holder.textview_name.setText(mList.get(position).getName());
-        holder.textview_address.setText(mList.get(position).getAddress());
-        holder.textView_rssi.setText(mList.get(position).getRssi());
-        holder.textView_UUID.setText(mList.get(position).getUuid());
-
+    public Object getItem(int position) {
+        return  scans.get(position);
     }
 
-    public static class ViewHolder extends RecyclerView.ViewHolder {
+    @Override
+    public long getItemId(int position) {
+        return 0;
+    }
 
-        TextView textview_name;
-        TextView textview_address;
-        TextView textView_rssi;
-        TextView textView_UUID;
-        TextView textView_number;
-
-
-        public ViewHolder(@NonNull View itemView) {
-            super(itemView);
-
-            this.textView_number = itemView.findViewById(R.id.textview_number);
-            this.textview_name = itemView.findViewById(R.id.textview_name);
-            this.textview_address = itemView.findViewById(R.id.textview_address);
-            this.textView_rssi = itemView.findViewById(R.id.textview_rssi);
-            this.textView_UUID = itemView.findViewById(R.id.textview_uuid);
-
-
+    @Override
+    public View getView(int position, View convertView, ViewGroup parent) {
+        ScansHolder scansHolder;
+        if (convertView == null) {
+            scansHolder = new ScansHolder();
+            convertView = layoutInflater.inflate(R.layout.row_scan, parent, false);
+            scansHolder.name = convertView.findViewById(R.id.textview_name);
+            scansHolder.address = convertView.findViewById(R.id.textview_address);
+            scansHolder.rssi = convertView.findViewById(R.id.textview_rssi);
+            scansHolder.UUID = convertView.findViewById(R.id.textview_uuid);
+            convertView.setTag(scansHolder);
+        } else {
+            scansHolder = (ScansHolder) convertView.getTag();
         }
+
+        scansHolder.name.setText("Name: " + scans.get(position).getName());
+        scansHolder.address.setText("Address: " + scans.get(position).getAddress());
+        scansHolder.rssi.setText("Rssi: " + scans.get(position).getRssi());
+        scansHolder.UUID.setText("UUID: " + scans.get(position).getUuid());
+
+        return convertView;
+    }
+
+    private class ScansHolder {
+        TextView name;
+        TextView address;
+        TextView rssi;
+        TextView UUID;
+    }
+
+    public String getAddress(int pos) {
+        return scans.get(pos).getAddress();
     }
 
 }
