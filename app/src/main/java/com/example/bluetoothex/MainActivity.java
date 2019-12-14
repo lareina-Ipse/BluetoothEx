@@ -137,76 +137,9 @@ public class MainActivity extends AppCompatActivity implements BaseInterface {
             super.onScanResult(callbackType, result);
             try {
 
-
                 final ScanRecord scanRecord = result.getScanRecord();
 
-                final ScanResult scanResult = result;
-                new Thread(new Runnable() {
-                    @Override
-                    public void run() {
-                        runOnUiThread(new Runnable() {
-                            @Override
-                            public void run() {
-
-                                BluetoothDevice device = result.getDevice();
-                                if (device.getType() != BluetoothDevice.DEVICE_TYPE_LE) {
-                                    //Advertising type: Legacy 아닌경우.
-                                    if (device.fetchUuidsWithSdp()) {
-                                        int check = 0;
-                                        if (mListView.getCount() != 0) {
-                                            for (int i = 0; i < mAdapter.getCount(); i++) {
-                                                if (mAdapter.getAddress(i).equals(scanResult.getDevice().getAddress())) {
-                                                    if (uuids == null) {
-
-                                                    } else {
-                                                        scan.set(i, new Scan(scanResult.getDevice().getName(),
-                                                                scanResult.getDevice().getAddress(),
-                                                                String.valueOf(result.getRssi()),
-                                                                uuids.toString()));
-                                                        check = 1;
-                                                    }
-                                                }
-                                            }
-
-                                            if (check == 0) {
-                                                if (uuids == null) {
-
-                                                } else {
-                                                    scan.add(0, new Scan(scanResult.getDevice().getName(),
-                                                            scanResult.getDevice().getAddress(),
-                                                            String.valueOf(result.getRssi()),
-                                                            uuids.toString()));
-
-                                                    mAdapter = new ScanAdapter(scan, getLayoutInflater());
-                                                    mListView.setAdapter(mAdapter);
-                                                    mAdapter.notifyDataSetChanged();
-                                                }
-                                            }
-                                        } else {
-                                            if (uuids == null ) {
-
-                                            } else {
-                                                scan.add(0, new Scan(scanResult.getDevice().getName(),
-                                                        scanResult.getDevice().getAddress(),
-                                                        String.valueOf(result.getRssi()),
-                                                        uuids.toString()));
-
-                                                mAdapter = new ScanAdapter(scan, getLayoutInflater());
-                                                mListView.setAdapter(mAdapter);
-                                                mAdapter.notifyDataSetChanged();
-                                            }
-
-                                        }
-
-                                    }
-                                }
-
-
-                                //    mRecyclerView.setAdapter(mAdapter);
-                            }
-                        });
-                    }
-                }).start();
+                processScan(result.getDevice(), scanRecord.getBytes(), result.getRssi());
 
             } catch (Exception e) {
                 e.printStackTrace();
@@ -353,19 +286,57 @@ public class MainActivity extends AppCompatActivity implements BaseInterface {
                 ADPayloadParser.getInstance().parse(scanRecord);
 
         String deviceUuid = null;
-
+        String deviceName = device.getName();
+        String deviceAddress = device.getAddress();
+        String deviceRssi = String.valueOf(rssi);
 
         for (ADStructure structure : structures) {
             if (structure instanceof IBeacon) {
-                IBeacon iBeacon = (IBeacon)structure;
+                IBeacon iBeacon = (IBeacon) structure;
                 deviceUuid = iBeacon.getUUID().toString();
+            }
+        }
+
+        if (deviceUuid != null) {
+            int check = 0;
+            if (mListView.getCount() != 0) {
+                for (int i=0; i<mAdapter.getCount(); i++) {
+                    if (mAdapter.getAddress(i).equals(deviceAddress)) {
+                        setValue(deviceName,
+                                deviceAddress,
+                                deviceRssi,
+                                deviceUuid);
+                        check = 1;
+                    }
+                }
+            }
+
+            if (check == 0) {
+                addValue(deviceName,
+                        deviceAddress,
+                        deviceRssi,
+                        deviceUuid);
             }
         }
 
         return deviceUuid;
     }
 
-    //processScan(result.getDevice(), result.getScanRecord().getBytes(), result.getRssi());
+    /*ListView */
+    private void addValue(String name, String address, String rssi, String UUID) {
+        scan.add(0, new Scan(name, address, rssi, UUID));
+        mAdapter = new ScanAdapter(scan, getLayoutInflater());
+        mListView.setAdapter(mAdapter);
+        mAdapter.notifyDataSetChanged();
+    }
+
+    /*ListView Set*/
+    private void setValue(String name, String address, String rssi, String UUID) {
+        scan.set(0, new Scan(name, address, rssi, UUID));
+        mAdapter = new ScanAdapter(scan, getLayoutInflater());
+        mListView.setAdapter(mAdapter);
+        mAdapter.notifyDataSetChanged();
+    }
 
 }
 
